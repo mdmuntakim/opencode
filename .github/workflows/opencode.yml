@@ -116,6 +116,17 @@ jobs:
           # Only with it the agent can create new tokens and change the
           # account itself, everything else works without it.
           OPENCODE_ADMIN_TOKEN: ${{ secrets.OPENCODE_ADMIN_TOKEN }}
+          # Optional free-tier provider keys. OpenCode picks up whichever of
+          # these are set; leave them unset to stay on opencode's free models.
+          # Set any you have as repo secrets and extend OPENCODE_MODELS with
+          # the models from that provider (e.g. "groq/openai/gpt-oss-120b").
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
           # `external_directory` and `doom_loop` default to "ask". In a
           # headless runner nobody can answer that prompt, so the job used to
           # hang until the timeout. Allow every permission automatically;

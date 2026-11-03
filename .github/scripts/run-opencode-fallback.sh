@@ -218,7 +218,7 @@ for model in "${models[@]}"; do
     exit 0
   fi
 
-  if [ "$status" -eq 124 ] || grep -qiE 'FreeUsageLimitError|free usage limit|429 Too Many|statusCode: *429|model not found|403' "$log"; then
+  if [ "$status" -eq 124 ] || grep -qiE 'FreeUsageLimitError|free usage limit|429 Too Many|statusCode: *429|model not found|403|401|unauthori[sz]ed|quota|rate.?limit|RESOURCE_EXHAUSTED|insufficient|billing|subscription|not (configured|authenticated|connected)|ProviderModelNotFoundError|ProviderInitError|auth' "$log"; then
     echo "::warning::Model ${model} hit limits/stalled; switching model..."
     rm -f "$log"
     continue
