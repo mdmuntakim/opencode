@@ -230,6 +230,24 @@ to switch to the next one (it recognises `FreeUsageLimitError`, `429`,
 so an exhausted provider or an unset key no longer aborts the whole run before
 the remaining models are tried.
 
+### Logging the runner in instead of staying anonymous
+
+GitHub-hosted runners share egress IPs, and anonymous free inference is
+already saturated on them — the jobs fail with `Free usage limit reached`
+even though the same models answer fine from a normal network connection.
+
+Logging the runner into an OpenCode Console account lifts that anonymous
+pool limit (`opencode auth login` → *Console* → *device*), and the token can
+be handed to the workflow as a secret:
+
+    opencode auth export > auth.json
+    gh secret set OPENCODE_AUTH_JSON --repo mmunki/opencode < auth.json
+
+Both agent workflows import it with `opencode auth import` before the agent
+starts, and stay anonymous when the secret is absent. The account still has to
+satisfy its own free-tier limits; subscribing to OpenCode Go is the path to
+sustained capacity.
+
 ## Secrets used
 
 | Secret | Required | Purpose |
@@ -237,6 +255,7 @@ the remaining models are tried.
 | `OPENCODE_GITHUB_TOKEN` | yes | Token used for the GitHub API and for git clone/fetch/push. Needs `repo` and `workflow` scopes to reach all repositories. With the `user` scope it can also change the profile, with `admin:public_key` it can manage the SSH keys. |
 | `OPENCODE_ADMIN_TOKEN` | no | Fine grained token with `Administration: write`. It is the only way to create further tokens. |
 | `OPENCODE_API_KEY` | no | Only needed if you switch away from the free model (e.g. an OpenCode Go key). |
+| `OPENCODE_AUTH_JSON` | no | `opencode auth export` of an OpenCode Console login; when present the agent workflows authenticate instead of staying anonymous (fixes `Free usage limit reached` on GitHub-hosted runners). |
 | `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `GOOGLE_API_KEY`, `GEMINI_API_KEY`, `NVIDIA_API_KEY`, `MISTRAL_API_KEY`, `CEREBRAS_API_KEY` | no | Free-tier provider keys; together with the `OPENCODE_MODELS` repo variable they decide what the fallback chain tries. |
 
 ### Rotating the token

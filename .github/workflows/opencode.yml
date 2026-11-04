@@ -103,6 +103,17 @@ jobs:
           curl -fsSL https://opencode.ai/v2/install | bash -s -- --version 2.0.22
           echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
 
+      - name: Import OpenCode credentials (if configured)
+        env:
+          OPENCODE_AUTH_JSON: ${{ secrets.OPENCODE_AUTH_JSON }}
+        run: |
+          if [ -n "$OPENCODE_AUTH_JSON" ]; then
+            printf '%s' "$OPENCODE_AUTH_JSON" | opencode auth import
+            echo "OpenCode credentials imported."
+          else
+            echo "No OPENCODE_AUTH_JSON secret; staying on anonymous free inference."
+          fi
+
       - name: Run opencode with model fallback
         env:
           GITHUB_TOKEN: ${{ secrets.OPENCODE_GITHUB_TOKEN }}
