@@ -2,6 +2,8 @@
 
 Personal opencode agent. Ask it anything through GitHub Issues.
 
+The agent decides what to answer, investigate or build, and GitHub Actions runs it.
+
 ## What is in here
 
 | Path | Description |
