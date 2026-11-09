@@ -4,6 +4,8 @@ Personal opencode agent. Ask it anything through GitHub Issues.
 
 The agent decides what to answer, investigate or build, and GitHub Actions runs it.
 
+Every answer, investigation and build is triggered from an issue on this repository.
+
 ## What is in here
 
 | Path | Description |
