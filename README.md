@@ -18,7 +18,7 @@ There is **no binary in the source tree**. Every build ends in a GitHub
 Release and the binary is an asset of that release.
 
 A *project* that an issue asks for (an app, a module, a daemon) gets its own
-repository under `mmunki/`; this repository is only the control plane. Project
+repository under `mdmuntakim/`; this repository is only the control plane. Project
 releases are published in the project repository and always include the source
 archive (`--source-archive`) next to the build and its checksums.
 
@@ -110,12 +110,12 @@ so a download can be verified against the release it came from.
 
 The releases of this repository:
 
-- https://github.com/mmunki/opencode/releases
+- https://github.com/mdmuntakim/opencode/releases
 
 Ask for a build and the agent publishes it:
 
 ```
-/oc build the final ld binary from mmunki/ld and publish it as a release
+/oc build the final ld binary from mdmuntakim/ld and publish it as a release
 ```
 
 The same can be done from the Actions tab: **Actions → release → Run
@@ -128,7 +128,7 @@ The package is published as a release asset, byte-for-byte as it was built,
 so the blob on GitHub has the exact same SHA-1 as the file on the device:
 
 ```bash
-gh release download v2.0.22 --repo mmunki/opencode \
+gh release download v2.0.22 --repo mdmuntakim/opencode \
   --pattern 'opencode_2.0.22_aarch64.deb'
 ```
 
@@ -142,11 +142,11 @@ sha256sum opencode_2.0.22_aarch64.deb
 ## Reach of the agent
 
 The agent authenticates with a token that has access to **every repository of
-the `mmunki` account**, so it can read and modify any of them, not just this
+the `mdmuntakim` account**, so it can read and modify any of them, not just this
 one. You can ask it to work on another repository:
 
 ```
-/oc fix the failing build in mmunki/su and open a PR there
+/oc fix the failing build in mdmuntakim/su and open a PR there
 ```
 
 It can also work on the account itself - the profile, the repositories, the
@@ -206,16 +206,16 @@ Create a classic personal access token with the `repo` and `workflow` scopes,
 then update the secret:
 
 ```bash
-gh secret set OPENCODE_GITHUB_TOKEN --repo mmunki/opencode
+gh secret set OPENCODE_GITHUB_TOKEN --repo mdmuntakim/opencode
 ```
 
 ### Adding the administration token
 
-Create a **fine grained** personal access token for the `mmunki` account with
+Create a **fine grained** personal access token for the `mdmuntakim` account with
 the `Administration: write` permission, then store it:
 
 ```bash
-gh secret set OPENCODE_ADMIN_TOKEN --repo mmunki/opencode
+gh secret set OPENCODE_ADMIN_TOKEN --repo mdmuntakim/opencode
 ```
 
 With that secret the agent can create new personal access tokens through
