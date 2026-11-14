@@ -9,6 +9,7 @@ Instructions for the opencode agent working in this repository.
 - `.github/workflows/` contains the workflows that drive this agent and the
   `release.yml` workflow that publishes a build.
 - `.github/scripts/` contains the tooling the agent uses:
+  - `run-opencode-fallback.sh` runs the agent with model fallback and a test gate.
   - `publish-release.sh` builds something and publishes it as a release asset.
   - `gh-account.sh` does the account level operations.
   - `tests/run-opencode-fallback.test.sh` runs the fallback wrapper against
