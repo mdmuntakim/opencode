@@ -73,7 +73,7 @@ cat > "$CASE/work/issue.json" <<'JSON'
 {"issue":{"number":92,"body":"Please improve the fallback runner."}}
 JSON
 set +e
-out="$(GITHUB_EVENT_PATH="$CASE/work/issue.json" GH_REPO="mmunki/opencode" \
+out="$(GITHUB_EVENT_PATH="$CASE/work/issue.json" GH_REPO="mdmuntakim/opencode" \
       TRIAGE_PROMPT="Triage instructions." OPENCODE_MODELS="test/model" \
       timeout 60 "$SCRIPT" 2>&1)"
 status=$?
@@ -91,7 +91,7 @@ check "prompt names the issue in the gh command" grep -q 'issue comment "92"' "$
 new_case explicit-prompt
 set +e
 PROMPT="Explicit workflow prompt." TRIAGE_PROMPT="Triage instructions." \
-  GH_REPO="mmunki/opencode" OPENCODE_MODELS="test/model" \
+  GH_REPO="mdmuntakim/opencode" OPENCODE_MODELS="test/model" \
   timeout 60 "$SCRIPT" >/dev/null 2>&1
 status=$?
 set -e
@@ -104,7 +104,7 @@ new_case failing-tests
 printf '{"name":"fixture","scripts":{"test":"exit 1"}}\n' > "$CASE/work/package.json"
 export FAKE_NPM_EXIT=1
 set +e
-out="$(TRIAGE_PROMPT="Triage." GH_REPO="mmunki/opencode" OPENCODE_MODELS="test/model" \
+out="$(TRIAGE_PROMPT="Triage." GH_REPO="mdmuntakim/opencode" OPENCODE_MODELS="test/model" \
       OPENCODE_TEST_RETRIES=2 timeout 60 "$SCRIPT" 2>&1)"
 status=$?
 set -e
@@ -125,7 +125,7 @@ STUB
 chmod +x "$CASE/bin/opencode"
 set +e
 start=$(date +%s)
-out="$(TRIAGE_PROMPT="Triage." GH_REPO="mmunki/opencode" OPENCODE_MODELS="slow/model fast/model" \
+out="$(TRIAGE_PROMPT="Triage." GH_REPO="mdmuntakim/opencode" OPENCODE_MODELS="slow/model fast/model" \
       OPENCODE_STALL_TIMEOUT=1 OPENCODE_ATTEMPT_TIMEOUT=5 timeout 60 "$SCRIPT" 2>&1)"
 status=$?
 elapsed=$(( $(date +%s) - start ))
@@ -141,7 +141,7 @@ check "stall: finishes promptly (${elapsed}s)" [ "$elapsed" -lt 40 ]
 new_case manifest-without-test
 printf '{"name":"fixture","scripts":{"build":"true"}}\n' > "$CASE/work/package.json"
 set +e
-out="$(TRIAGE_PROMPT="Triage." GH_REPO="mmunki/opencode" OPENCODE_MODELS="test/model" \
+out="$(TRIAGE_PROMPT="Triage." GH_REPO="mdmuntakim/opencode" OPENCODE_MODELS="test/model" \
       timeout 60 "$SCRIPT" 2>&1)"
 status=$?
 set -e
@@ -157,7 +157,7 @@ printf '{"name":"fixture","scripts":{"test":"exit 0"}}\n' > "$CASE/work/package.
 mkdir -p "$CASE/work/sub"
 cd "$CASE/work/sub" || exit 1
 set +e
-out="$(GITHUB_WORKSPACE="$CASE/work" TRIAGE_PROMPT="Triage." GH_REPO="mmunki/opencode" \
+out="$(GITHUB_WORKSPACE="$CASE/work" TRIAGE_PROMPT="Triage." GH_REPO="mdmuntakim/opencode" \
       OPENCODE_MODELS="test/model" timeout 60 "$SCRIPT" 2>&1)"
 status=$?
 set -e
@@ -177,7 +177,7 @@ check "repository: package.json is valid JSON" node -e '
   process.exit(typeof m.scripts?.test === "string" && m.scripts.test.length > 0 ? 0 : 1);
 ' "$ROOT/package.json"
 set +e
-out="$(GITHUB_WORKSPACE="$ROOT" TRIAGE_PROMPT="Triage." GH_REPO="mmunki/opencode" \
+out="$(GITHUB_WORKSPACE="$ROOT" TRIAGE_PROMPT="Triage." GH_REPO="mdmuntakim/opencode" \
       OPENCODE_MODELS="test/model" timeout 60 "$SCRIPT" 2>&1)"
 status=$?
 set -e

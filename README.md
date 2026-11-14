@@ -13,8 +13,11 @@ Every answer, investigation and build is triggered from an issue on this reposit
 | `.github/workflows/opencode.yml` | Answers questions asked in issue / PR comments. |
 | `.github/workflows/opencode-triage.yml` | Automatically answers newly opened issues. |
 | `.github/workflows/release.yml` | Builds something and publishes it as a release. |
+| `.github/workflows/protect-source.yml` | Fails pull requests that delete source files. |
+| `.github/workflows/scripts-test.yml` | Lints the shell tooling and tests the agent runner. |
 | `.github/scripts/publish-release.sh` | Builds an artefact and publishes it as a release asset. |
 | `.github/scripts/gh-account.sh` | The account level operations (profile, tokens, repositories). |
+| `.github/scripts/run-opencode-fallback.sh` | Runs the agent with model fallback and a test gate. |
 | `prompts/triage.md` | The instruction used for automatic issue triage. |
 | `AGENTS.md` | Context the agent loads for this repository. |
 
@@ -176,12 +179,20 @@ Two limits are worth knowing:
 
 ## Setup details
 
-- **Model** – `opencode/deepseek-v4.1-flash-free`. The free opencode model is
-  used by default, so no provider API key is required. To switch to a keyed
-  model, add an `OPENCODE_API_KEY` secret to the repository and update the
-  `model:` input in the workflows. Free models are rotated by the provider, so
-  if a run fails with `Model not found`, pick one of the models it suggests
-  and update both workflow files.
+- **Model** – the runner starts the free models first, in this fallback chain:
+  `google/gemini-3.8-flash google/gemini-3.5-flash google/gemini-3-flash
+  google/gemini-2.5-flash opencode/deepseek-v4.1-flash-free
+  opencode/glm-5.3-flash-free opencode/flint-40b-free opencode/beam-free
+  opencode/mimo-v2.6-flash-free`.  The first entry is used for the session and
+  the rest back it up when a model stalls, times out or hits a free tier limit,
+  so the job keeps running on free capacity as long as one entry holds. No
+  provider API key is required. To use a keyed model, add an `OPENCODE_API_KEY`
+  secret and set the repository variable `OPENCODE_MODELS` to a chain that
+  lists the keyed models first, for example
+  `opencode-go/glm-5.3-flash opencode-go/kimi-k2.7-code`. Free models are rotated
+  by the provider, so if a run fails with `Model not found` or
+  `Free usage limit reached`, pick a working model and update the
+  `OPENCODE_MODELS` variable.
 - **Permissions** – a headless runner has nobody to approve a prompt.
   `external_directory` and `doom_loop` default to `"ask"`, so the agent used
   to wait forever and the job was cancelled at GitHub's 6 hour limit. The
@@ -189,12 +200,13 @@ Two limits are worth knowing:
   and both workflows export `{"*":"allow"}` in `OPENCODE_PERMISSION` so every
   permission is granted automatically, also when the agent works in a scratch
   directory. The agent jobs also have `timeout-minutes: 180` as a backstop.
-- **Auth** – the workflows use `use_github_token: true`, which means the
-  OpenCode GitHub App does **not** need to be installed. The token is read from
-  the `OPENCODE_GITHUB_TOKEN` secret.
-- **Action** – pinned to `anomalyco/opencode/github@github-v1.2.26`. The action
-  installs opencode v1, which is the release that still ships the
-  `opencode github run` command.
+- **Auth** – the workflows read the token from the `OPENCODE_GITHUB_TOKEN`
+  secret (an optional `PAT_TOKEN` secret wins) and may use the optional
+  `OPENCODE_ADMIN_TOKEN` secret. No GitHub App has to be installed.
+- **Agent install** – opencode is installed directly from the official installer
+  (`curl -fsSL https://opencode.ai/v2/install | bash -s -- --version 2.0.22`)
+  instead of the `anomalyco/opencode` action, which used to fail on its version
+  lookup step. The version is pinned on purpose.
 
 ## Fixing `Free usage limit reached`
 
@@ -214,7 +226,7 @@ in order of cost:
    [NVIDIA](https://build.nvidia.com) (`NVIDIA_API_KEY`),
    [Mistral](https://console.mistral.ai/) (`MISTRAL_API_KEY`) or
    [Cerebras](https://inference.cerebras.ai/) (`CEREBRAS_API_KEY`), then run
-   `gh secret set <NAME> --repo mmunki/opencode` for each. Set the repo
+   `gh secret set <NAME> --repo mdmuntakim/opencode` for each. Set the repo
    variable `OPENCODE_MODELS` to a space separated fallback chain that lists
    those providers first, and the runner will use the free opencode models
    only as a last resort. Free tiers still rate limit, so this raises the
@@ -222,16 +234,18 @@ in order of cost:
 3. **Subscribe to OpenCode Go** ($10/month) or **Go Plus** — see
    [opencode.ai/v2/docs/console/go](https://opencode.ai/v2/docs/console/go/).
    Copy the key from the OpenCode Console and run
-   `gh secret set OPENCODE_API_KEY --repo mmunki/opencode`. Then set the
+   `gh secret set OPENCODE_API_KEY --repo mdmuntakim/opencode`. Then set the
    `OPENCODE_MODELS` variable to e.g.
    `opencode-go/glm-5.3-flash opencode-go/kimi-k2.7-code opencode-go/deepseek-v4.1-flash`
    (model ids from the Go docs). Paying is the only officially supported way
    to get sustained, reliable capacity.
 
-The fallback wrapper treats quota/auth failures from *any* model as a signal
-to switch to the next one (it recognises `FreeUsageLimitError`, `429`,
-`RESOURCE_EXHAUSTED`, `401`/`403`, `rate limit`, `quota`, `subscription`, …),
-so an exhausted provider or an unset key no longer aborts the whole run before
+The fallback wrapper treats quota/auth/stall failures from *any* model as a
+signal to switch to the next one (it recognises `FreeUsageLimitError`,
+`Free usage limit`, `429`, `RESOURCE_EXHAUSTED`, `billing`, `quota`, `rate
+limit`, `subscription`, `not configured`, `not authenticated`, `ProviderError`,
+`model not found`, `model unavailable`, `401`/`403`, …), so an exhausted
+provider, an unset key or a dead model no longer aborts the whole run before
 the remaining models are tried.
 
 ### Logging the runner in instead of staying anonymous
@@ -245,7 +259,7 @@ pool limit (`opencode auth login` → *Console* → *device*), and the token can
 be handed to the workflow as a secret:
 
     opencode auth export > auth.json
-    gh secret set OPENCODE_AUTH_JSON --repo mmunki/opencode < auth.json
+    gh secret set OPENCODE_AUTH_JSON --repo mdmuntakim/opencode < auth.json
 
 Both agent workflows import it with `opencode auth import` before the agent
 starts, and stay anonymous when the secret is absent. The account still has to

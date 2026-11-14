@@ -153,6 +153,46 @@ jobs:
         # the free models are weak at.
         run: .github/scripts/run-opencode-fallback.sh
 
+      - name: Create or Update Pull Request Automatically
+        env:
+          GITHUB_TOKEN: ${{ secrets.OPENCODE_GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || '0' }}
+          BASE: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          base="${BASE:-main}"
+          # The agent pushes the fix on its own branch, find it among the
+          # remote branches and open a pull request from it when it is ahead of
+          # the base branch.
+          git fetch --quiet --no-tags origin '+refs/heads/*:refs/remotes/origin/*' || true
+          head_ref=""
+          while read -r ref; do
+            name="${ref#refs/remotes/origin/}"
+            if [ "$name" = "$base" ]; then
+              continue
+            fi
+            count="$(git rev-list --count "$base..$ref" 2>/dev/null || echo 0)"
+            if [ "${count:-0}" -gt 0 ]; then
+              head_ref="$ref"
+              break
+            fi
+          done < <(git for-each-ref --format='%(refname)' refs/remotes/origin)
+          if [ -z "$head_ref" ]; then
+            echo "no agent branch ahead of $base was found, nothing to open a pull request for"
+            exit 0
+          fi
+          head_name="${head_ref#refs/remotes/origin/}"
+          echo "the agent pushed $head_name"
+          if gh pr view "$head_name" --json number --jq .number >/dev/null 2>&1; then
+            echo "a pull request for $head_name already exists"
+            exit 0
+          fi
+          gh pr create --head "$head_name" \
+            --base "$base" \
+            --title "AI Agent Fix for Issue #${ISSUE_NUMBER}" \
+            --body "Automated agent fix for issue #${ISSUE_NUMBER}. The fix lives on branch ${head_name} and was produced by the OpenCode agent." \
+            || echo "no pull request was created (it may already exist)"
+
       # The agent works in its own scratch space, but if it left anything
       # behind in the checkout it is restored here.  The source tree of the
       # repository is never changed by a run, a change is only ever made on a

@@ -9,7 +9,11 @@ on:
         required: false
         type: string
 
-permissions: write-all
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: read
 
 jobs:
   opencode:
@@ -81,16 +85,21 @@ jobs:
           echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
 
       - name: Configure OpenCode
+        env:
+          OPENCODE_MODELS: ${{ vars.OPENCODE_MODELS }}
         run: |
           set -euo pipefail
           mkdir -p "$HOME/.config/opencode"
-          cat > "$HOME/.config/opencode/opencode.jsonc" <<'JSON'
+          chain="${OPENCODE_MODELS:-google/gemini-3.8-flash google/gemini-3.5-flash google/gemini-3-flash google/gemini-2.5-flash opencode/deepseek-v4.1-flash-free opencode/glm-5.3-flash-free opencode/flint-40b-free opencode/beam-free opencode/mimo-v2.6-flash-free}"
+          first="${chain%% *}"
+          cat > "$HOME/.config/opencode/opencode.jsonc" <<EOF
           {
-            "$schema": "https://opencode.ai/config.json",
+            "\$schema": "https://opencode.ai/config.json",
             "permission": "allow",
-            "model": "google/gemini-3.8-flash"
+            "model": "$first"
           }
-          JSON
+          EOF
+          cat "$HOME/.config/opencode/opencode.jsonc"
 
       - name: Import OpenCode credentials (if configured)
         env:
@@ -129,15 +138,42 @@ jobs:
       - name: Create or Update Pull Request Automatically
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.OPENCODE_GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || '0' }}
+          BASE: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
-          current_branch="$(git branch --show-current || echo 'test-branch')"
-          if git diff --quiet && [ -n "$(git log origin/main..HEAD --oneline)" ]; then
-            gh pr create --title "AI Agent Fix for Issue #${{ github.event.issue.number }}" \
-                         --body "Automated Level 4 self-healing agent fix for issue #${{ github.event.issue.number }}." \
-                         --base "${{ github.event.repository.default_branch }}" \
-                         || echo "PR already exists or could not be created."
+          base="${BASE:-main}"
+          # The agent pushes the fix on its own branch, find it among the
+          # remote branches and open a pull request from it when it is ahead of
+          # the base branch.
+          git fetch --quiet --no-tags origin '+refs/heads/*:refs/remotes/origin/*' || true
+          head_ref=""
+          while read -r ref; do
+            name="${ref#refs/remotes/origin/}"
+            if [ "$name" = "$base" ]; then
+              continue
+            fi
+            count="$(git rev-list --count "$base..$ref" 2>/dev/null || echo 0)"
+            if [ "${count:-0}" -gt 0 ]; then
+              head_ref="$ref"
+              break
+            fi
+          done < <(git for-each-ref --format='%(refname)' refs/remotes/origin)
+          if [ -z "$head_ref" ]; then
+            echo "no agent branch ahead of $base was found, nothing to open a pull request for"
+            exit 0
           fi
+          head_name="${head_ref#refs/remotes/origin/}"
+          echo "the agent pushed $head_name"
+          if gh pr view "$head_name" --json number --jq .number >/dev/null 2>&1; then
+            echo "a pull request for $head_name already exists"
+            exit 0
+          fi
+          gh pr create --head "$head_name" \
+            --base "$base" \
+            --title "AI Agent Fix for Issue #${ISSUE_NUMBER}" \
+            --body "Automated agent fix for issue #${ISSUE_NUMBER}. The fix lives on branch ${head_name} and was produced by the OpenCode agent." \
+            || echo "no pull request was created (it may already exist)"
 
       - name: Make sure source tree was not touched
         run: |

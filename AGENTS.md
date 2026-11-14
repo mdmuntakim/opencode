@@ -27,7 +27,7 @@ checkout and it never commits anything:
 
 ```bash
 .github/scripts/publish-release.sh \
-    --repo mmunki/ld --clone https://github.com/mmunki/ld --branch main \
+    --repo mdmuntakim/ld --clone https://github.com/mdmuntakim/ld --branch main \
     --build "make" --artifact bin/ld \
     --tag v0.1.0 --name "ld 0.1.0" --notes "what the release contains"
 ```
@@ -40,9 +40,9 @@ workflow**.
 
 ## Projects get their own repository
 
-`mmunki/opencode` is the control repository for the agent.  A project that an
+`mdmuntakim/opencode` is the control repository for the agent.  A project that an
 issue asks for (an app, a module, a daemon, a binary) lives in its **own**
-repository under `mmunki/`, never in this one and never as a release here.
+repository under `mdmuntakim/`, never in this one and never as a release here.
 
 1. Create the repository (public, like the other project repositories):
 
@@ -60,7 +60,7 @@ repository under `mmunki/`, never in this one and never as a release here.
 
    ```bash
    .github/scripts/publish-release.sh \
-       --repo mmunki/sipolicy --clone https://github.com/mmunki/sipolicy \
+       --repo mdmuntakim/sipolicy --clone https://github.com/mdmuntakim/sipolicy \
        --branch main --build "bash build.sh" \
        --artifact sipolicy/dist/sipolicy-0.109.zip \
        --source-archive \
@@ -73,7 +73,7 @@ project release includes it, together with the checksums the script writes.
 ## Long builds: never reach GitHub's 6 hour limit
 
 A job must never run longer than **350 minutes**.  For a build that can take
-longer, use the checkpointed continuation workflow in `mmunki/game-forge`
+longer, use the checkpointed continuation workflow in `mdmuntakim/game-forge`
 (`.github/workflows/build.yml`):
 
 - the job has `timeout-minutes: 350`;
@@ -91,10 +91,10 @@ cannot hand off.
 The agent runs with a token that has access to **all** repositories of the
 `mmunki` account, not only this one.  That means you can:
 
-- read another repository: `gh repo view mmunki/<repo>`, `gh api repos/mmunki/<repo>`
-- clone it: `git clone https://github.com/mmunki/<repo>`
-- open a pull request against it: `gh pr create --repo mmunki/<repo> ...`
-- create a release in it: `gh release create --repo mmunki/<repo> ...`
+- read another repository: `gh repo view mdmuntakim/<repo>`, `gh api repos/mdmuntakim/<repo>`
+- clone it: `git clone https://github.com/mdmuntakim/<repo>`
+- open a pull request against it: `gh pr create --repo mdmuntakim/<repo> ...`
+- create a release in it: `gh release create --repo mdmuntakim/<repo> ...`
 - create a repository: `.github/scripts/gh-account.sh repo-create NAME --private`
 
 Prefer `gh` for anything that touches the GitHub API, it is already
@@ -132,7 +132,7 @@ A token that the script creates is written to a file with mode 600, it is
 never printed into a comment or into a log.  Store it with:
 
 ```bash
-gh secret set OPENCODE_ADMIN_TOKEN --repo mmunki/opencode < token.txt
+gh secret set OPENCODE_ADMIN_TOKEN --repo mdmuntakim/opencode < token.txt
 ```
 
 ## Rules

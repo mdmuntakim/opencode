@@ -7,7 +7,7 @@ name: release
 # agent calls .github/scripts/publish-release.sh for the automatic one.
 #
 #   gh workflow run release.yml \
-#     -f repo=mmunki/ld -f ref=main -f build=make -f artifacts=bin/ld \
+#     -f repo=mdmuntakim/ld -f ref=main -f build=make -f artifacts=bin/ld \
 #     -f tag=v0.1.0 -f name="ld 0.1.0"
 
 on:
@@ -16,7 +16,7 @@ on:
       repo:
         description: "owner/name of the repository the release is published in"
         required: false
-        default: "mmunki/opencode"
+        default: "mdmuntakim/opencode"
       ref:
         description: "branch or tag that is built"
         required: false

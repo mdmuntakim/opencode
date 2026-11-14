@@ -5,7 +5,7 @@
 # The rule of this repository: build output is never committed to the source
 # tree, it is always published as a GitHub Release asset.
 #
-#   publish-release.sh --clone https://github.com/mmunki/ld --branch main \
+#   publish-release.sh --clone https://github.com/mdmuntakim/ld --branch main \
 #       --build "make" --artifact bin/ld --tag v0.1.0 --name "ld 0.1.0"
 #
 #   publish-release.sh --build "make" --artifact dist/app.tar.gz \
@@ -68,7 +68,7 @@ while [ $# -gt 0 ]; do
 done
 
 [ -n "$TAG" ] || die "--tag is required"
-[ -n "$REPO" ] || die "--repo is required (for example --repo mmunki/opencode)"
+[ -n "$REPO" ] || die "--repo is required (for example --repo mdmuntakim/opencode)"
 command -v gh >/dev/null 2>&1 || die "the gh CLI is required"
 
 # The owner token first: it can publish into every repository of the owner,

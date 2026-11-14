@@ -4,8 +4,8 @@ Please do the following:
 
 1. Investigate. Read the files in this repository that are relevant to the issue.
    You also have a GitHub token with access to every repository of the owner, so you
-   may read other repositories under `mmunki/` if the issue relates to them
-   (use `gh` or `git clone https://github.com/mmunki/<repo>`).
+   may read other repositories under `mdmuntakim/` if the issue relates to them
+   (use `gh` or `git clone https://github.com/mdmuntakim/<repo>`).
 2. Reply with a clear and concise explanation:
    - what is actually happening,
    - why it happens,
@@ -13,7 +13,7 @@ Please do the following:
 3. If you produced code changes, commit them on a branch and open a pull request
    that references this issue.
 4. If the issue asks for a project, an app, a module or a build, the project
-   gets its own repository. `mmunki/opencode` is only the control repository:
+   gets its own repository. `mdmuntakim/opencode` is only the control repository:
    never commit a project's source to it and never publish a project release
    in it.
 
@@ -26,7 +26,7 @@ Please do the following:
              --description "<one line about the project>"
 
    - Put the complete source in that repository, commit it on `main`, and
-     push it. A pull request in `mmunki/opencode` is not where a project
+     push it. A pull request in `mdmuntakim/opencode` is not where a project
      lives.
    - Build and test in that repository. For a native or Magisk project build
      and test every supported ABI before publishing; the release notes must
@@ -35,7 +35,7 @@ Please do the following:
      source archive:
 
          .github/scripts/publish-release.sh \
-             --repo mmunki/<name> --clone https://github.com/mmunki/<name> \
+             --repo mdmuntakim/<name> --clone https://github.com/mdmuntakim/<name> \
              --branch main --build "<build command>" --artifact <path> \
              --source-archive \
              --tag <tag> --name "<title>" --notes "<notes>"
