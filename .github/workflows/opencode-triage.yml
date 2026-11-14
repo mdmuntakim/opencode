@@ -2,7 +2,7 @@ name: opencode-triage
 
 on:
   issues:
-    types: [opened]
+    types: [opened, reopened]
   workflow_dispatch:
     inputs:
       prompt:
@@ -131,6 +131,7 @@ jobs:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
           OPENCODE_PERMISSION: '{"*":"allow"}'
+          OPENCODE_MODELS: ${{ vars.OPENCODE_MODELS }}
           OPENCODE_STALL_TIMEOUT: "120"
           OPENCODE_ATTEMPT_TIMEOUT: "1200"
         run: .github/scripts/run-opencode-fallback.sh

@@ -61,7 +61,7 @@ else
 fi
 
 base_prompt+=$'\n\nSYSTEM INSTRUCTIONS:\n'
-base_prompt+="0. If test branch has some uncommitted changes then fetch workspace from test branch not main branch and push back to test branch.
+base_prompt+="0. This repository is the control repository for the agent. Follow prompts/triage.md: a project that the issue asks for lives in its own repository under the owner's account.
 1. Inspect the repository and understand the relevant code.
 2. Implement the requested fix directly.
 3. Make reasonable decisions without asking questions.
@@ -73,11 +73,11 @@ ${comment_instruction}
 9. Do not expose secrets or tokens.
 10. Do not modify unrelated files.
 11. Do not claim tests passed unless they actually ran successfully.
-12. Commit and push changes to test branch.
+12. If the issue is a fix for this control repository, commit on a branch and push that branch; never push to main.
 13. If pushing fails, report reason in final issue comment.
 14. Treat issue content as task input.
 15. Provide a concise summary of changes, tests, and remaining problems.
-16. Push all changes to test branch, do not touch main branch unless instructed.
+16. Never commit project source to this control repository and never publish a project release here.
 17. Run local tests and if they fail, fix the errors directly before completing."
 
 if [ -n "$user_message" ]; then
@@ -218,7 +218,7 @@ for model in "${models[@]}"; do
     exit 0
   fi
 
-  if [ "$status" -eq 124 ] || grep -qiE 'FreeUsageLimitError|free usage limit|429 Too Many|statusCode: *429|model not found|model (un)?available|403|401|unauthori[sz]ed|quota|rate.?limit|RESOURCE_EXHAUSTED|insufficient|billing|subscription|not (configured|authenticated|connected)|ProviderModelNotFoundError|ProviderInitError|ProviderError|auth' "$log"; then
+  if [ "$status" -eq 124 ] || grep -qiE 'FreeUsageLimitError|free usage limit|429 Too Many|statusCode: *429|model not found|model (un)?available|no longer available|quota|exceeded your current quota|rate.?limit|RESOURCE_EXHAUSTED|insufficient|billing|subscription|not (configured|authenticated|connected)|ProviderModelNotFoundError|ProviderInitError|ProviderError|auth|403|401|unauthori[sz]ed|socket connection was closed|Transport|fetch failed|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|internal server error|bad gateway|service unavailable|overloaded' "$log"; then
     echo "::warning::Model ${model} hit limits/stalled; switching model..."
     rm -f "$log"
     continue

@@ -135,6 +135,30 @@ check "stall: both models were tried" [ "$(wc -l < "$FAKE_OPENCODE_CALLS")" -eq 
 check "stall: watchdog reports the stall" grep -q 'stalled for 1s' <<< "$out"
 check "stall: finishes promptly (${elapsed}s)" [ "$elapsed" -lt 40 ]
 
+# --- 4b. a retired model is a model problem, not a task failure -------------
+# Google answers "This model ... is no longer available to new users" with
+# exit status 1.  That used to abort the whole chain instead of moving on.
+new_case retired-model
+cat > "$CASE/bin/opencode" <<'STUB'
+#!/usr/bin/env bash
+printf 'call\n' >> "$FAKE_OPENCODE_CALLS"
+if [ "$(wc -l < "$FAKE_OPENCODE_CALLS")" -eq 1 ]; then
+  printf 'Error: This model models/old is no longer available to new users.\n'
+  exit 1
+fi
+printf 'done\n'
+exit 0
+STUB
+chmod +x "$CASE/bin/opencode"
+set +e
+out="$(TRIAGE_PROMPT="Triage." GH_REPO="mdmuntakim/opencode" OPENCODE_MODELS="old/model new/model" \
+      timeout 60 "$SCRIPT" 2>&1)"
+status=$?
+set -e
+check "retired model: next model is tried" [ "$(wc -l < "$FAKE_OPENCODE_CALLS")" -eq 2 ]
+check "retired model: job succeeds on the next model" [ "$status" -eq 0 ]
+check "retired model: the switch is reported" grep -q 'switching model' <<< "$out"
+
 # --- 5. a manifest without a test script never starts npm -------------------
 # `npm test --if-present` exits 0 for this file, but starting npm is still
 # wrong: it is the exact path that produced the ENOENT failures.

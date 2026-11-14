@@ -141,6 +141,7 @@ jobs:
           # hang until the timeout. Allow every permission automatically;
           # the GitHub handler denies `question` for its own sessions.
           OPENCODE_PERMISSION: '{"*":"allow"}'
+          OPENCODE_MODELS: ${{ vars.OPENCODE_MODELS }}
           # Two minutes without a token means the model is stuck, not working.
           OPENCODE_STALL_TIMEOUT: "120"
           OPENCODE_ATTEMPT_TIMEOUT: "1200"
