@@ -112,6 +112,14 @@ jobs:
             echo "No OPENCODE_AUTH_JSON secret; staying on anonymous free inference."
           fi
 
+      - name: Restore the previous agent checkpoint
+        if: github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN || secrets.OPENCODE_GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || '0' }}
+        run: .github/scripts/agent-checkpoint.sh restore
+
       - name: Run OpenCode with fallback & live logging
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.OPENCODE_GITHUB_TOKEN }}
@@ -135,6 +143,32 @@ jobs:
           OPENCODE_STALL_TIMEOUT: "900"
           OPENCODE_ATTEMPT_TIMEOUT: "2700"
         run: .github/scripts/run-opencode-fallback.sh
+
+      - name: Save the agent checkpoint
+        if: always()
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number || '0' }}
+          CHECKPOINT_FILE: ${{ runner.temp }}/opencode-checkpoint.tgz
+        run: .github/scripts/agent-checkpoint.sh save
+
+      - name: Upload the agent checkpoint
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-checkpoint-${{ github.event.issue.number || '0' }}
+          path: ${{ runner.temp }}/opencode-checkpoint.tgz
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Report the failed run
+        if: failure() && github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN || secrets.OPENCODE_GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || '0' }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body \
+            "The agent run stopped before it finished (model limit, timeout or transport error). The workspace was checkpointed as \`agent-checkpoint-${ISSUE_NUMBER}\`, so reopening this issue, or commenting \`/oc continue\`, resumes from the saved state instead of starting over." || true
 
       - name: Create or Update Pull Request Automatically
         env:

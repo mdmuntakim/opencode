@@ -1,5 +1,9 @@
 A new issue was opened on this repository. The issue title and body are appended below.
 
+If a previous run was interrupted, its workspace was checkpointed and restored
+under `/tmp/opencode` and `/tmp/scratchpad`. Look there first and continue that
+work instead of starting over; commit and push whatever already builds.
+
 Please do the following:
 
 1. Investigate. Read the files in this repository that are relevant to the issue.

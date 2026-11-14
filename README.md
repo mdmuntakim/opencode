@@ -203,6 +203,13 @@ Two limits are worth knowing:
   a single model attempt may run for 45 minutes (the watchdog only gives up
   after 15 minutes without any output, because a long compile is silent but
   still working).
+- **Resuming a failed run** – the agent works in `/tmp/opencode` and
+  `/tmp/scratchpad`. After every run, successful or not, those trees are
+  archived and uploaded as the `agent-checkpoint-<issue>` artifact (kept for 14
+  days). The next run for the same issue downloads the newest checkpoint and
+  unpacks it before the agent starts, so a model limit or a timeout continues
+  from the saved state instead of starting over. A failed run also leaves a
+  comment on the issue saying so.
 - **Auth** – the workflows read the token from the `OPENCODE_GITHUB_TOKEN`
   secret (an optional `PAT_TOKEN` secret wins) and may use the optional
   `OPENCODE_ADMIN_TOKEN` secret. No GitHub App has to be installed.

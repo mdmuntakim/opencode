@@ -80,7 +80,8 @@ ${comment_instruction}
 15. Provide a concise summary of changes, tests, and remaining problems.
 16. Never commit project source to this control repository and never publish a project release here.
 17. Run local tests and if they fail, fix the errors directly before completing.
-18. Commit and push incrementally: push each working step as soon as it builds. A timeout must not lose the work."
+18. Commit and push incrementally: push each working step as soon as it builds. A timeout must not lose the work.
+19. Work under /tmp/opencode or /tmp/scratchpad; both are checkpointed and restored before the next run. Continue restored work instead of starting over."
 
 if [ -n "$user_message" ]; then
   base_prompt+=$'\n\nUser Message:\n'"$user_message"

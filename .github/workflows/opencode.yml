@@ -113,6 +113,13 @@ jobs:
             echo "No OPENCODE_AUTH_JSON secret; staying on anonymous free inference."
           fi
 
+      - name: Restore the previous agent checkpoint
+        env:
+          GH_TOKEN: ${{ secrets.OPENCODE_GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || '0' }}
+        run: .github/scripts/agent-checkpoint.sh restore
+
       - name: Run opencode with model fallback
         env:
           GITHUB_TOKEN: ${{ secrets.OPENCODE_GITHUB_TOKEN }}
@@ -150,6 +157,22 @@ jobs:
         # limit, or times out.  If OPENCODE_API_KEY is configured, add keyed
         # models to OPENCODE_MODELS (repo variable) to extend the chain.
         run: .github/scripts/run-opencode-fallback.sh
+
+      - name: Save the agent checkpoint
+        if: always()
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number || '0' }}
+          CHECKPOINT_FILE: ${{ runner.temp }}/opencode-checkpoint.tgz
+        run: .github/scripts/agent-checkpoint.sh save
+
+      - name: Upload the agent checkpoint
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-checkpoint-${{ github.event.issue.number || '0' }}
+          path: ${{ runner.temp }}/opencode-checkpoint.tgz
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Create or Update Pull Request Automatically
         env:
