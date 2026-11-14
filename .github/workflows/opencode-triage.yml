@@ -19,7 +19,7 @@ jobs:
   opencode:
     runs-on: ubuntu-latest
 
-    timeout-minutes: 180
+    timeout-minutes: 350
 
     env:
       NODE_OPTIONS: "--max-old-space-size=8192"
@@ -132,8 +132,8 @@ jobs:
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
           OPENCODE_PERMISSION: '{"*":"allow"}'
           OPENCODE_MODELS: ${{ vars.OPENCODE_MODELS }}
-          OPENCODE_STALL_TIMEOUT: "120"
-          OPENCODE_ATTEMPT_TIMEOUT: "1200"
+          OPENCODE_STALL_TIMEOUT: "900"
+          OPENCODE_ATTEMPT_TIMEOUT: "2700"
         run: .github/scripts/run-opencode-fallback.sh
 
       - name: Create or Update Pull Request Automatically

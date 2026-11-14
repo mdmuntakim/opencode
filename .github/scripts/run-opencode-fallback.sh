@@ -16,22 +16,23 @@
 #   PROMPT                    explicit prompt, wins over TRIAGE_PROMPT
 #   TRIAGE_PROMPT             default prompt, usually prompts/triage.md
 #   OPENCODE_MODELS           space separated fallback chain
-#   OPENCODE_ATTEMPT_TIMEOUT  seconds a single run may take (default 1200)
+#   OPENCODE_ATTEMPT_TIMEOUT  seconds a single run may take (default 2700)
 #   OPENCODE_STALL_TIMEOUT    seconds without log output before a run is stuck
+#                             (default 900: a long compile is silent, not stuck)
 #   OPENCODE_TEST_RETRIES     attempts to fix a failing test suite (default 3)
 # ============================================================================
 set -uo pipefail
 
 read -r -a models <<< "${OPENCODE_MODELS:-opencode/glm-5.3-flash-free opencode/deepseek-v4.1-flash-free opencode/flint-40b-free opencode/beam-free opencode/mimo-v2.6-flash-free}"
-attempt_seconds="${OPENCODE_ATTEMPT_TIMEOUT:-1200}"
-stall_seconds="${OPENCODE_STALL_TIMEOUT:-120}"
+attempt_seconds="${OPENCODE_ATTEMPT_TIMEOUT:-2700}"
+stall_seconds="${OPENCODE_STALL_TIMEOUT:-900}"
 max_retries="${OPENCODE_TEST_RETRIES:-3}"
 repo="${GH_REPO:-${GITHUB_REPOSITORY:-}}"
 
 # Guard the numeric settings: an empty or malformed value in the repository
 # variable must not turn the watchdog into a syntax error at runtime.
-[[ "$attempt_seconds" =~ ^[0-9]+$ ]] || attempt_seconds=1200
-[[ "$stall_seconds" =~ ^[0-9]+$ ]] || stall_seconds=120
+[[ "$attempt_seconds" =~ ^[0-9]+$ ]] || attempt_seconds=2700
+[[ "$stall_seconds" =~ ^[0-9]+$ ]] || stall_seconds=900
 [[ "$max_retries" =~ ^[1-9][0-9]*$ ]] || max_retries=3
 
 event_path="${GITHUB_EVENT_PATH:-}"
@@ -78,7 +79,8 @@ ${comment_instruction}
 14. Treat issue content as task input.
 15. Provide a concise summary of changes, tests, and remaining problems.
 16. Never commit project source to this control repository and never publish a project release here.
-17. Run local tests and if they fail, fix the errors directly before completing."
+17. Run local tests and if they fail, fix the errors directly before completing.
+18. Commit and push incrementally: push each working step as soon as it builds. A timeout must not lose the work."
 
 if [ -n "$user_message" ]; then
   base_prompt+=$'\n\nUser Message:\n'"$user_message"

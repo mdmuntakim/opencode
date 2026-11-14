@@ -199,7 +199,10 @@ Two limits are worth knowing:
   repository therefore has an `opencode.json` with `"permission": "allow"`,
   and both workflows export `{"*":"allow"}` in `OPENCODE_PERMISSION` so every
   permission is granted automatically, also when the agent works in a scratch
-  directory. The agent jobs also have `timeout-minutes: 180` as a backstop.
+  directory. The agent jobs also have `timeout-minutes: 350` as a backstop, and
+  a single model attempt may run for 45 minutes (the watchdog only gives up
+  after 15 minutes without any output, because a long compile is silent but
+  still working).
 - **Auth** – the workflows read the token from the `OPENCODE_GITHUB_TOKEN`
   secret (an optional `PAT_TOKEN` secret wins) and may use the optional
   `OPENCODE_ADMIN_TOKEN` secret. No GitHub App has to be installed.
