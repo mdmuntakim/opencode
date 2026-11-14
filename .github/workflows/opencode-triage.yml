@@ -30,7 +30,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event.repository.default_branch }}
+          ref: ${{ github.event.ref || github.event.repository.default_branch }}
           token: ${{ secrets.PAT_TOKEN || secrets.OPENCODE_GITHUB_TOKEN }}
 
       - name: Show memory budget
@@ -88,9 +88,20 @@ jobs:
           {
             "$schema": "https://opencode.ai/config.json",
             "permission": "allow",
-            "model": "opencode/deepseek-v4.1-flash-free"
+            "model": "google/gemini-3.8-flash"
           }
           JSON
+
+      - name: Import OpenCode credentials (if configured)
+        env:
+          OPENCODE_AUTH_JSON: ${{ secrets.OPENCODE_AUTH_JSON }}
+        run: |
+          if [ -n "$OPENCODE_AUTH_JSON" ]; then
+            printf '%s' "$OPENCODE_AUTH_JSON" | opencode auth import
+            echo "OpenCode credentials imported."
+          else
+            echo "No OPENCODE_AUTH_JSON secret; staying on anonymous free inference."
+          fi
 
       - name: Run OpenCode with fallback & live logging
         env:
@@ -101,6 +112,15 @@ jobs:
           PROMPT: ${{ github.event.inputs.prompt || env.TRIAGE_PROMPT }}
           OPENCODE_GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.OPENCODE_GITHUB_TOKEN }}
           OPENCODE_ADMIN_TOKEN: ${{ secrets.OPENCODE_ADMIN_TOKEN }}
+          # Optional free-tier provider keys. OpenCode picks up whichever of
+          # these are set; leave them unset to stay on opencode's free models.
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
           OPENCODE_PERMISSION: '{"*":"allow"}'
           OPENCODE_STALL_TIMEOUT: "120"
           OPENCODE_ATTEMPT_TIMEOUT: "1200"

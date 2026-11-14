@@ -22,7 +22,7 @@
 # ============================================================================
 set -uo pipefail
 
-read -r -a models <<< "${OPENCODE_MODELS:-opencode/deepseek-v4.1-flash-free opencode/glm-5.3-flash-free opencode/flint-40b-free opencode/beam-free opencode/mimo-v2.6-flash-free}"
+read -r -a models <<< "${OPENCODE_MODELS:-google/gemini-3.8-flash google/gemini-3.5-flash google/gemini-3-flash google/gemini-2.5-flash opencode/deepseek-v4.1-flash-free opencode/glm-5.3-flash-free opencode/flint-40b-free opencode/beam-free opencode/mimo-v2.6-flash-free}"
 attempt_seconds="${OPENCODE_ATTEMPT_TIMEOUT:-1200}"
 stall_seconds="${OPENCODE_STALL_TIMEOUT:-120}"
 max_retries="${OPENCODE_TEST_RETRIES:-3}"
@@ -218,7 +218,7 @@ for model in "${models[@]}"; do
     exit 0
   fi
 
-  if [ "$status" -eq 124 ] || grep -qiE 'FreeUsageLimitError|free usage limit|429 Too Many|statusCode: *429|model not found|403' "$log"; then
+  if [ "$status" -eq 124 ] || grep -qiE 'FreeUsageLimitError|free usage limit|429 Too Many|statusCode: *429|model not found|403|401|unauthori[sz]ed|quota|rate.?limit|RESOURCE_EXHAUSTED|insufficient|billing|subscription|not (configured|authenticated|connected)|ProviderModelNotFoundError|ProviderInitError|auth' "$log"; then
     echo "::warning::Model ${model} hit limits/stalled; switching model..."
     rm -f "$log"
     continue

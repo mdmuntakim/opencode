@@ -196,13 +196,71 @@ Two limits are worth knowing:
   installs opencode v1, which is the release that still ships the
   `opencode github run` command.
 
+## Fixing `Free usage limit reached`
+
+When every model in the fallback chain stops with `Error: Free usage limit
+reached` the GitHub Actions runner, the workflow and this repository are fine —
+the limit is enforced on the OpenCode account server side. There is **no
+permanent unlimited mode without either a subscription or a key**; the options,
+in order of cost:
+
+1. **Wait for the quota to reset.** The free models are rate limited per
+   account; once the window passes the same workflow works again with no
+   changes. (Current judged status: reset is not reliable.)
+2. **Add free provider keys.** Create a free account at one or more of
+   [Google AI Studio](https://aistudio.google.com/) (`GOOGLE_API_KEY` /
+   `GEMINI_API_KEY`), [Groq](https://console.groq.com/) (`GROQ_API_KEY`),
+   [OpenRouter](https://openrouter.ai/) (`OPENROUTER_API_KEY`),
+   [NVIDIA](https://build.nvidia.com) (`NVIDIA_API_KEY`),
+   [Mistral](https://console.mistral.ai/) (`MISTRAL_API_KEY`) or
+   [Cerebras](https://inference.cerebras.ai/) (`CEREBRAS_API_KEY`), then run
+   `gh secret set <NAME> --repo mmunki/opencode` for each. Set the repo
+   variable `OPENCODE_MODELS` to a space separated fallback chain that lists
+   those providers first, and the runner will use the free opencode models
+   only as a last resort. Free tiers still rate limit, so this raises the
+   ceiling; it does not remove it.
+3. **Subscribe to OpenCode Go** ($10/month) or **Go Plus** — see
+   [opencode.ai/v2/docs/console/go](https://opencode.ai/v2/docs/console/go/).
+   Copy the key from the OpenCode Console and run
+   `gh secret set OPENCODE_API_KEY --repo mmunki/opencode`. Then set the
+   `OPENCODE_MODELS` variable to e.g.
+   `opencode-go/glm-5.3-flash opencode-go/kimi-k2.7-code opencode-go/deepseek-v4.1-flash`
+   (model ids from the Go docs). Paying is the only officially supported way
+   to get sustained, reliable capacity.
+
+The fallback wrapper treats quota/auth failures from *any* model as a signal
+to switch to the next one (it recognises `FreeUsageLimitError`, `429`,
+`RESOURCE_EXHAUSTED`, `401`/`403`, `rate limit`, `quota`, `subscription`, …),
+so an exhausted provider or an unset key no longer aborts the whole run before
+the remaining models are tried.
+
+### Logging the runner in instead of staying anonymous
+
+GitHub-hosted runners share egress IPs, and anonymous free inference is
+already saturated on them — the jobs fail with `Free usage limit reached`
+even though the same models answer fine from a normal network connection.
+
+Logging the runner into an OpenCode Console account lifts that anonymous
+pool limit (`opencode auth login` → *Console* → *device*), and the token can
+be handed to the workflow as a secret:
+
+    opencode auth export > auth.json
+    gh secret set OPENCODE_AUTH_JSON --repo mmunki/opencode < auth.json
+
+Both agent workflows import it with `opencode auth import` before the agent
+starts, and stay anonymous when the secret is absent. The account still has to
+satisfy its own free-tier limits; subscribing to OpenCode Go is the path to
+sustained capacity.
+
 ## Secrets used
 
 | Secret | Required | Purpose |
 | --- | --- | --- |
 | `OPENCODE_GITHUB_TOKEN` | yes | Token used for the GitHub API and for git clone/fetch/push. Needs `repo` and `workflow` scopes to reach all repositories. With the `user` scope it can also change the profile, with `admin:public_key` it can manage the SSH keys. |
 | `OPENCODE_ADMIN_TOKEN` | no | Fine grained token with `Administration: write`. It is the only way to create further tokens. |
-| `OPENCODE_API_KEY` | no | Only needed if you switch away from the free model. |
+| `OPENCODE_API_KEY` | no | Only needed if you switch away from the free model (e.g. an OpenCode Go key). |
+| `OPENCODE_AUTH_JSON` | no | `opencode auth export` of an OpenCode Console login; when present the agent workflows authenticate instead of staying anonymous (fixes `Free usage limit reached` on GitHub-hosted runners). |
+| `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `GOOGLE_API_KEY`, `GEMINI_API_KEY`, `NVIDIA_API_KEY`, `MISTRAL_API_KEY`, `CEREBRAS_API_KEY` | no | Free-tier provider keys; together with the `OPENCODE_MODELS` repo variable they decide what the fallback chain tries. |
 
 ### Rotating the token
 

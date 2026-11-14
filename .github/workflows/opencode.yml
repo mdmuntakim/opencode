@@ -103,6 +103,17 @@ jobs:
           curl -fsSL https://opencode.ai/v2/install | bash -s -- --version 2.0.22
           echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
 
+      - name: Import OpenCode credentials (if configured)
+        env:
+          OPENCODE_AUTH_JSON: ${{ secrets.OPENCODE_AUTH_JSON }}
+        run: |
+          if [ -n "$OPENCODE_AUTH_JSON" ]; then
+            printf '%s' "$OPENCODE_AUTH_JSON" | opencode auth import
+            echo "OpenCode credentials imported."
+          else
+            echo "No OPENCODE_AUTH_JSON secret; staying on anonymous free inference."
+          fi
+
       - name: Run opencode with model fallback
         env:
           GITHUB_TOKEN: ${{ secrets.OPENCODE_GITHUB_TOKEN }}
@@ -116,6 +127,17 @@ jobs:
           # Only with it the agent can create new tokens and change the
           # account itself, everything else works without it.
           OPENCODE_ADMIN_TOKEN: ${{ secrets.OPENCODE_ADMIN_TOKEN }}
+          # Optional free-tier provider keys. OpenCode picks up whichever of
+          # these are set; leave them unset to stay on opencode's free models.
+          # Set any you have as repo secrets and extend OPENCODE_MODELS with
+          # the models from that provider (e.g. "groq/openai/gpt-oss-120b").
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
           # `external_directory` and `doom_loop` default to "ask". In a
           # headless runner nobody can answer that prompt, so the job used to
           # hang until the timeout. Allow every permission automatically;
