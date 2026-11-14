@@ -90,7 +90,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$HOME/.config/opencode"
-          chain="${OPENCODE_MODELS:-google/gemini-3.8-flash google/gemini-3.5-flash google/gemini-3-flash google/gemini-2.5-flash opencode/deepseek-v4.1-flash-free opencode/glm-5.3-flash-free opencode/flint-40b-free opencode/beam-free opencode/mimo-v2.6-flash-free}"
+          chain="${OPENCODE_MODELS:-opencode/glm-5.3-flash-free opencode/deepseek-v4.1-flash-free opencode/flint-40b-free opencode/beam-free opencode/mimo-v2.6-flash-free}"
           first="${chain%% *}"
           cat > "$HOME/.config/opencode/opencode.jsonc" <<EOF
           {
@@ -123,8 +123,8 @@ jobs:
           OPENCODE_ADMIN_TOKEN: ${{ secrets.OPENCODE_ADMIN_TOKEN }}
           # Optional free-tier provider keys. OpenCode picks up whichever of
           # these are set; leave them unset to stay on opencode's free models.
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # Google/Gemini is deliberately not wired in: the runner is free
+          # models only.
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}

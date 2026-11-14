@@ -61,9 +61,8 @@ jobs:
       # would make opencode believe the provider is configured and break the
       # free models, so it is deliberately left unset when the secret is absent.
       # When you set OPENCODE_API_KEY in the repo secrets you can also add
-      # keyed models (gemini, chatgpt, ...) to OPENCODE_MODELS so the agent falls
-      # back to them for tasks the free models are weak at (game building,
-      # drawable xml, ...).
+      # keyed models to OPENCODE_MODELS so the agent falls back to them for
+      # tasks the free models are weak at (game building, drawable xml, ...).
       - name: Export provider API key (if configured)
         env:
           KEY: ${{ secrets.OPENCODE_API_KEY }}
@@ -131,8 +130,7 @@ jobs:
           # these are set; leave them unset to stay on opencode's free models.
           # Set any you have as repo secrets and extend OPENCODE_MODELS with
           # the models from that provider (e.g. "groq/openai/gpt-oss-120b").
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # Google/Gemini is deliberately not wired in: free models only.
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
@@ -146,11 +144,10 @@ jobs:
           # Two minutes without a token means the model is stuck, not working.
           OPENCODE_STALL_TIMEOUT: "120"
           OPENCODE_ATTEMPT_TIMEOUT: "1200"
-        # The wrapper tries the fast models first (GLM, Flint, Beam) and moves
-        # on when a model stalls, hits the free-tier limit, or times out.  If
-        # OPENCODE_API_KEY is configured, add keyed models to OPENCODE_MODELS
-        # (repo variable) so the agent falls back to gemini/chatgpt for tasks
-        # the free models are weak at.
+        # The wrapper tries the fast free models first (GLM, DeepSeek, Flint,
+        # Beam, MiMo) and moves on when a model stalls, hits the free-tier
+        # limit, or times out.  If OPENCODE_API_KEY is configured, add keyed
+        # models to OPENCODE_MODELS (repo variable) to extend the chain.
         run: .github/scripts/run-opencode-fallback.sh
 
       - name: Create or Update Pull Request Automatically

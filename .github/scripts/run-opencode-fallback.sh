@@ -22,7 +22,7 @@
 # ============================================================================
 set -uo pipefail
 
-read -r -a models <<< "${OPENCODE_MODELS:-google/gemini-3.8-flash google/gemini-3.5-flash google/gemini-3-flash google/gemini-2.5-flash opencode/deepseek-v4.1-flash-free opencode/glm-5.3-flash-free opencode/flint-40b-free opencode/beam-free opencode/mimo-v2.6-flash-free}"
+read -r -a models <<< "${OPENCODE_MODELS:-opencode/glm-5.3-flash-free opencode/deepseek-v4.1-flash-free opencode/flint-40b-free opencode/beam-free opencode/mimo-v2.6-flash-free}"
 attempt_seconds="${OPENCODE_ATTEMPT_TIMEOUT:-1200}"
 stall_seconds="${OPENCODE_STALL_TIMEOUT:-120}"
 max_retries="${OPENCODE_TEST_RETRIES:-3}"

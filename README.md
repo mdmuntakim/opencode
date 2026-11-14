@@ -179,10 +179,9 @@ Two limits are worth knowing:
 
 ## Setup details
 
-- **Model** – the runner starts the free models first, in this fallback chain:
-  `google/gemini-3.8-flash google/gemini-3.5-flash google/gemini-3-flash
-  google/gemini-2.5-flash opencode/deepseek-v4.1-flash-free
-  opencode/glm-5.3-flash-free opencode/flint-40b-free opencode/beam-free
+- **Model** – the runner uses free models only, in this fallback chain:
+  `opencode/glm-5.3-flash-free opencode/deepseek-v4.1-flash-free
+  opencode/flint-40b-free opencode/beam-free
   opencode/mimo-v2.6-flash-free`.  The first entry is used for the session and
   the rest back it up when a model stalls, times out or hits a free tier limit,
   so the job keeps running on free capacity as long as one entry holds. No
@@ -192,7 +191,8 @@ Two limits are worth knowing:
   `opencode-go/glm-5.3-flash opencode-go/kimi-k2.7-code`. Free models are rotated
   by the provider, so if a run fails with `Model not found` or
   `Free usage limit reached`, pick a working model and update the
-  `OPENCODE_MODELS` variable.
+  `OPENCODE_MODELS` variable. Google/Gemini is not used, even when a
+  `GOOGLE_API_KEY` or `GEMINI_API_KEY` secret exists.
 - **Permissions** – a headless runner has nobody to approve a prompt.
   `external_directory` and `doom_loop` default to `"ask"`, so the agent used
   to wait forever and the job was cancelled at GitHub's 6 hour limit. The
@@ -220,8 +220,7 @@ in order of cost:
    account; once the window passes the same workflow works again with no
    changes. (Current judged status: reset is not reliable.)
 2. **Add free provider keys.** Create a free account at one or more of
-   [Google AI Studio](https://aistudio.google.com/) (`GOOGLE_API_KEY` /
-   `GEMINI_API_KEY`), [Groq](https://console.groq.com/) (`GROQ_API_KEY`),
+   [Groq](https://console.groq.com/) (`GROQ_API_KEY`),
    [OpenRouter](https://openrouter.ai/) (`OPENROUTER_API_KEY`),
    [NVIDIA](https://build.nvidia.com) (`NVIDIA_API_KEY`),
    [Mistral](https://console.mistral.ai/) (`MISTRAL_API_KEY`) or
@@ -274,7 +273,7 @@ sustained capacity.
 | `OPENCODE_ADMIN_TOKEN` | no | Fine grained token with `Administration: write`. It is the only way to create further tokens. |
 | `OPENCODE_API_KEY` | no | Only needed if you switch away from the free model (e.g. an OpenCode Go key). |
 | `OPENCODE_AUTH_JSON` | no | `opencode auth export` of an OpenCode Console login; when present the agent workflows authenticate instead of staying anonymous (fixes `Free usage limit reached` on GitHub-hosted runners). |
-| `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `GOOGLE_API_KEY`, `GEMINI_API_KEY`, `NVIDIA_API_KEY`, `MISTRAL_API_KEY`, `CEREBRAS_API_KEY` | no | Free-tier provider keys; together with the `OPENCODE_MODELS` repo variable they decide what the fallback chain tries. |
+| `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `NVIDIA_API_KEY`, `MISTRAL_API_KEY`, `CEREBRAS_API_KEY` | no | Free-tier provider keys; together with the `OPENCODE_MODELS` repo variable they decide what the fallback chain tries. |
 
 ### Rotating the token
 
