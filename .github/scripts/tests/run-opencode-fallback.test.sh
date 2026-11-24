@@ -63,6 +63,8 @@ new_case() { # new_case <name> -> sets CASE, adds stubs, changes into it
   unset FAKE_OPENCODE_EXIT FAKE_NPM_EXIT
   # The harness itself may export an event payload; every case sets what it needs.
   unset GITHUB_EVENT_PATH GITHUB_REPOSITORY GH_REPO PROMPT TRIAGE_PROMPT OPENCODE_MODELS GITHUB_WORKSPACE
+  # The harness that runs this suite may export provider keys of its own.
+  unset GROQ_API_KEY OPENROUTER_API_KEY NVIDIA_API_KEY MISTRAL_API_KEY CEREBRAS_API_KEY
   export PATH="$CASE/bin:$PATH"
   cd "$CASE/work" || exit 1
 }
@@ -208,6 +210,55 @@ set -e
 check "repository: gate accepts the manifest" [ "$status" -eq 0 ]
 check "repository: npm ran once" [ "$(wc -l < "$FAKE_NPM_LOG")" -eq 1 ]
 check "repository: tests are reported as passed" grep -q 'All tests passed' <<< "$out"
+
+# --- 8. a keyed model without a usable key never reaches the provider ------
+# A GitHub token pasted into GROQ_API_KEY used to be exported and sent to
+# Groq, which answered 401 "Invalid API Key".  The model is dropped instead.
+new_case keyed-model-with-github-token
+export GROQ_API_KEY="ghp_0123456789abcdefghijklmnopqrstuvwxyz"
+set +e
+out="$(TRIAGE_PROMPT="Triage." GH_REPO="mdmuntakim/opencode" \
+      OPENCODE_MODELS="groq/openai/gpt-oss-120b test/model" timeout 60 "$SCRIPT" 2>&1)"
+status=$?
+set -e
+check "keyed model: the bad key is reported" grep -q 'skipping groq/openai/gpt-oss-120b' <<< "$out"
+check "keyed model: only the free model runs" [ "$(wc -l < "$FAKE_OPENCODE_CALLS")" -eq 1 ]
+check "keyed model: the free model is the one called" grep -q 'test/model' "$FAKE_OPENCODE_ARGS"
+check "keyed model: run succeeds" [ "$status" -eq 0 ]
+
+# --- 9. "Invalid API Key" switches models instead of failing the job --------
+new_case invalid-api-key-falls-back
+cat > "$CASE/bin/opencode" <<'STUB'
+#!/usr/bin/env bash
+printf 'call\n' >> "$FAKE_OPENCODE_CALLS"
+if [ "$(wc -l < "$FAKE_OPENCODE_CALLS")" -eq 1 ]; then
+  printf 'Error: Invalid API Key\n'
+  exit 1
+fi
+printf 'done\n'
+exit 0
+STUB
+chmod +x "$CASE/bin/opencode"
+set +e
+out="$(TRIAGE_PROMPT="Triage." GH_REPO="mdmuntakim/opencode" \
+      OPENCODE_MODELS="old/model new/model" timeout 60 "$SCRIPT" 2>&1)"
+status=$?
+set -e
+check "invalid key: the next model is tried" [ "$(wc -l < "$FAKE_OPENCODE_CALLS")" -eq 2 ]
+check "invalid key: the job succeeds on the next model" [ "$status" -eq 0 ]
+check "invalid key: the switch is reported" grep -q 'switching model' <<< "$out"
+
+# --- 10. a chain of only unusable keys fails with a clear message ----------
+new_case only-unusable-keys
+export GROQ_API_KEY="ghp_0123456789abcdefghijklmnopqrstuvwxyz"
+set +e
+out="$(TRIAGE_PROMPT="Triage." GH_REPO="mdmuntakim/opencode" \
+      OPENCODE_MODELS="groq/openai/gpt-oss-120b" timeout 60 "$SCRIPT" 2>&1)"
+status=$?
+set -e
+check "unusable chain: fails" [ "$status" -ne 0 ]
+check "unusable chain: says why" grep -q 'no model in OPENCODE_MODELS has a usable provider key' <<< "$out"
+check "unusable chain: no provider call" [ ! -s "$FAKE_OPENCODE_CALLS" ]
 
 echo
 printf '%d passed, %d failed\n' "$PASS" "$FAIL"

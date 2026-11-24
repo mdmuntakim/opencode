@@ -24,6 +24,50 @@
 set -uo pipefail
 
 read -r -a models <<< "${OPENCODE_MODELS:-opencode/glm-5.3-flash-free opencode/deepseek-v4.1-flash-free opencode/flint-40b-free opencode/beam-free opencode/mimo-v2.6-flash-free}"
+
+# A keyed model can only work when its provider key is usable.  Dropping it
+# before the run instead of spending an attempt on a guaranteed 401 is also
+# what keeps a secret that holds the wrong value (a GitHub token pasted into
+# the Groq field, for example) from being sent to the provider at all.
+key_for_model() {
+  case "$1" in
+    groq/*)       printf '%s' "${GROQ_API_KEY:-}" ;;
+    openrouter/*) printf '%s' "${OPENROUTER_API_KEY:-}" ;;
+    nvidia/*)     printf '%s' "${NVIDIA_API_KEY:-}" ;;
+    mistral/*)    printf '%s' "${MISTRAL_API_KEY:-}" ;;
+    cerebras/*)   printf '%s' "${CEREBRAS_API_KEY:-}" ;;
+    *)            printf '' ;;
+  esac
+}
+
+model_is_usable() {
+  local model="$1" key
+  case "$model" in
+    groq/*|openrouter/*|nvidia/*|mistral/*|cerebras/*) ;;
+    *) return 0 ;;
+  esac
+  key="$(key_for_model "$model")"
+  [ -n "$key" ] || return 1
+  case "$key" in
+    ghp_*|gho_*|ghu_*|ghs_*|ghr_*|github_pat_*) return 1 ;;
+  esac
+  return 0
+}
+
+usable_models=()
+for model in "${models[@]}"; do
+  if model_is_usable "$model"; then
+    usable_models+=("$model")
+  else
+    echo "::warning::skipping ${model}: its provider key is missing or is not a provider key"
+  fi
+done
+if [ "${#usable_models[@]}" -eq 0 ]; then
+  echo "::error::no model in OPENCODE_MODELS has a usable provider key."
+  exit 1
+fi
+models=("${usable_models[@]}")
+
 attempt_seconds="${OPENCODE_ATTEMPT_TIMEOUT:-2700}"
 stall_seconds="${OPENCODE_STALL_TIMEOUT:-900}"
 max_retries="${OPENCODE_TEST_RETRIES:-3}"
@@ -221,7 +265,7 @@ for model in "${models[@]}"; do
     exit 0
   fi
 
-  if [ "$status" -eq 124 ] || grep -qiE 'FreeUsageLimitError|free usage limit|429 Too Many|statusCode: *429|model not found|model (un)?available|no longer available|quota|exceeded your current quota|rate.?limit|RESOURCE_EXHAUSTED|insufficient|billing|subscription|not (configured|authenticated|connected)|ProviderModelNotFoundError|ProviderInitError|ProviderError|auth|403|401|unauthori[sz]ed|socket connection was closed|Transport|fetch failed|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|internal server error|bad gateway|service unavailable|overloaded' "$log"; then
+  if [ "$status" -eq 124 ] || grep -qiE 'FreeUsageLimitError|free usage limit|429 Too Many|statusCode: *429|model not found|model (un)?available|no longer available|quota|exceeded your current quota|rate.?limit|RESOURCE_EXHAUSTED|insufficient|billing|subscription|invalid api key|invalid_api_key|not (configured|authenticated|connected)|ProviderModelNotFoundError|ProviderInitError|ProviderError|auth|403|401|unauthori[sz]ed|socket connection was closed|Transport|fetch failed|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|internal server error|bad gateway|service unavailable|overloaded' "$log"; then
     echo "::warning::Model ${model} hit limits/stalled; switching model..."
     rm -f "$log"
     continue

@@ -74,6 +74,18 @@ jobs:
             echo "No provider key configured, using free model."
           fi
 
+      # A key that is set but rejected used to be invisible: OpenCode lists the
+      # provider as configured, the run silently falls back to the free models,
+      # and the first keyed model in OPENCODE_MODELS dies with a 401.  Probe
+      # every configured key once.  A failure is a warning, not a dead job:
+      # the free models still carry the run.
+      - name: Check the provider keys (if configured)
+        continue-on-error: true
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: bash .github/scripts/check-provider-keys.sh
+
       # The scripts that publish a build as a release and that change the
       # account have to be executable before the agent uses them.
       - name: Prepare the release and account tooling
