@@ -112,6 +112,13 @@ jobs:
             echo "No OPENCODE_AUTH_JSON secret; staying on anonymous free inference."
           fi
 
+      - name: Check the provider keys (if configured)
+        continue-on-error: true
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: bash .github/scripts/check-provider-keys.sh
+
       - name: Restore the previous agent checkpoint
         if: github.event_name == 'issues'
         env:

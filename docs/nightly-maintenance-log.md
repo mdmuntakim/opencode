@@ -117,3 +117,89 @@ branch, so `main` must receive the runner and manifest through a pull request
 (`test` → `main`) before issue-triggered runs use them. Nothing on `test` can
 change what an issue-triggered run executes.
 
+## 2026-11-24
+
+**Area:** provider keys (`GROQ_API_KEY`, `OPENROUTER_API_KEY`), the runner and
+the agent workflows.
+
+**Reported symptom:** a request to prove the new Groq and OpenRouter keys work
+with one small inference per provider.
+
+**Finding:** both repository secrets hold the same value as
+`OPENCODE_GITHUB_TOKEN` (a GitHub personal access token, updated
+2026-11-24T00:02Z), not a provider key. The providers reject it:
+Groq answers `HTTP 401 {"error":{"message":"Invalid API Key",...}}` and
+OpenRouter answers `HTTP 401 {"error":{"message":"Missing Authentication
+header",...}}`; OpenCode itself prints `Error: Invalid API Key` for
+`groq/openai/gpt-oss-120b` and `Error: Missing Authentication header` for an
+OpenRouter model. No model inference succeeded. A second gap: the
+`OPENCODE_MODELS` variable still lists only the five free `opencode/*` models,
+so even a valid key would not be used.
+
+**Change:** added `.github/scripts/check-provider-keys.sh`, which sends one
+tiny completion per configured provider and prints the model, the reply and the
+seconds, or the exact error. It refuses to send a secret that looks like a
+GitHub token to a third party. Both agent workflows run it as a non-blocking
+preflight, so a rejected key shows up as a warning instead of being hidden by a
+silent fallback. `run-opencode-fallback.sh` now drops keyed models whose key is
+missing or malformed (before any provider call) and treats `Invalid API Key` as
+a switch-model signal instead of a task failure.
+
+**Verification:** `npm test` (44 runner assertions, 24 provider-key assertions)
+and `npm run lint` pass; the real probe against the configured secrets reports
+both keys as GitHub tokens and sends nothing.
+
+**Open, needs the owner:** set real keys with
+`gh secret set GROQ_API_KEY --repo mdmuntakim/opencode` and the same for
+`OPENROUTER_API_KEY`, then add the keyed models to `OPENCODE_MODELS`, e.g.
+`groq/openai/gpt-oss-120b` and `openrouter/inclusionai/ling-3.2-flash:free`.
+The agent cannot create provider accounts or read the real keys.
+## 2026-11-24
+
+**Area:** provider keys (`GROQ_API_KEY`, `OPENROUTER_API_KEY`) and the keyed
+part of the fallback chain.
+
+**Reported symptom (issue #58, `/oc` comment):** verify that the new Groq and
+OpenRouter keys work with a quick inference test.
+
+**Finding:** neither key works. Both repository secrets hold the same GitHub
+personal access token that `OPENCODE_GITHUB_TOKEN` holds (40 characters,
+`ghp_` prefix, identical SHA-256), so they are a copy/paste mistake, not
+provider keys. Evidence:
+
+- `GROQ_API_KEY` and `OPENROUTER_API_KEY` are byte-identical to `GH_TOKEN`;
+- Groq `POST /openai/v1/chat/completions` (model `openai/gpt-oss-120b`):
+  HTTP 401 in about 0.05 s, `{"error":{"message":"Invalid API Key",...}}`;
+- OpenRouter `POST /api/v1/chat/completions` (model
+  `inclusionai/ling-3.2-flash:free`): HTTP 401 in about 0.03 s,
+  `{"error":{"message":"Missing Authentication header","code":401}}`;
+- through OpenCode itself: `Error: Invalid API Key` (groq) and
+  `Error: Missing Authentication header` (openrouter), both in about 2 s.
+
+Two more gaps made this invisible and would have kept the "limit fix" from
+working even with valid keys:
+
+- the secrets are exported to the agent process, so OpenCode lists Groq and
+  OpenRouter as *configured* (`opencode auth list`) although it cannot use
+  them;
+- the `OPENCODE_MODELS` repository variable still lists only free
+  `opencode/*` models, so no keyed model is in the chain at all.
+
+**Change:**
+
+- new `.github/scripts/check-provider-keys.sh`: one tiny completion per
+  configured provider, prints model, reply and seconds, or the exact error;
+  a GitHub token in a provider secret is reported and never sent; `--strict`
+  exits non-zero on failure;
+- both agent workflows run it as a non-blocking preflight, so a rejected key
+  is a visible warning instead of a silent fallback;
+- `run-opencode-fallback.sh` drops keyed models whose key is missing or is a
+  GitHub token (no attempt wasted, no token sent to a third party) and treats
+  `Invalid API Key` as a provider failure, so the chain continues;
+- tests: 9 new assertions in the runner suite (44 total) and a new 24
+  assertion suite for the probe; `npm test` and `shellcheck` pass.
+
+**Still open, needs the owner:** replace both secrets with the real keys
+(`gh secret set GROQ_API_KEY` / `OPENROUTER_API_KEY`) and, once the probe
+reports OK, extend `OPENCODE_MODELS` with the keyed models. No API can create
+a provider key.

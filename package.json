@@ -5,7 +5,8 @@
   "description": "Control repository for the opencode agent: workflows, prompts and the shell tooling the agent runs.",
   "license": "UNLICENSED",
   "scripts": {
-    "test": "bash .github/scripts/tests/run-opencode-fallback.test.sh",
+    "test": "bash .github/scripts/tests/run-opencode-fallback.test.sh && bash .github/scripts/tests/check-provider-keys.test.sh",
+    "test:providers": "bash .github/scripts/tests/check-provider-keys.test.sh",
     "lint": "shellcheck -x .github/scripts/*.sh .github/scripts/tests/*.sh",
     "check": "npm run lint && npm test"
   }

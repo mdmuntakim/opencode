@@ -239,7 +239,10 @@ in order of cost:
    variable `OPENCODE_MODELS` to a space separated fallback chain that lists
    those providers first, and the runner will use the free opencode models
    only as a last resort. Free tiers still rate limit, so this raises the
-   ceiling; it does not remove it.
+   ceiling; it does not remove it. Check the secret before relying on it:
+   `.github/scripts/check-provider-keys.sh` sends one tiny completion per
+   configured provider and prints the model, the reply and the seconds it took,
+   or the exact error.
 3. **Subscribe to OpenCode Go** ($10/month) or **Go Plus** — see
    [opencode.ai/v2/docs/console/go](https://opencode.ai/v2/docs/console/go/).
    Copy the key from the OpenCode Console and run
@@ -252,10 +255,29 @@ in order of cost:
 The fallback wrapper treats quota/auth/stall failures from *any* model as a
 signal to switch to the next one (it recognises `FreeUsageLimitError`,
 `Free usage limit`, `429`, `RESOURCE_EXHAUSTED`, `billing`, `quota`, `rate
-limit`, `subscription`, `not configured`, `not authenticated`, `ProviderError`,
-`model not found`, `model unavailable`, `401`/`403`, …), so an exhausted
-provider, an unset key or a dead model no longer aborts the whole run before
-the remaining models are tried.
+limit`, `subscription`, `invalid api key`, `not configured`, `not authenticated`,
+`ProviderError`, `model not found`, `model unavailable`, `401`/`403`, …), so an
+exhausted provider, an unset key or a dead model no longer aborts the whole run
+before the remaining models are tried.
+
+A keyed model whose provider key is missing, or whose key is not a provider key
+at all (a GitHub token pasted into `GROQ_API_KEY`, for example), is dropped
+from the chain with a warning before the run starts. The token is never sent to
+the third-party provider.
+
+### Checking the provider keys
+
+`.github/scripts/check-provider-keys.sh` sends one tiny chat completion per
+configured provider and prints the model, the reply and the seconds it took, or
+the exact error the provider returned:
+
+    .github/scripts/check-provider-keys.sh            # report only, exit 0
+    .github/scripts/check-provider-keys.sh --strict   # exit 1 when a key fails
+
+Both agent workflows run it as a non-blocking preflight before the agent starts,
+so a rejected key shows up in the job log as a warning instead of being hidden
+behind a silent fallback to the free models. A secret that contains a GitHub
+token is reported and never sent to the provider.
 
 ### Logging the runner in instead of staying anonymous
 
