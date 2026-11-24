@@ -23,6 +23,7 @@ check() { # check <description> <command...>
 }
 
 no_literal_escapes() { ! grep -qF '\n' "$FAKE_OPENCODE_PROMPT"; }
+no_match() { ! grep -qF "$1" "$2"; }
 
 make_stubs() {
   local dir="$1"
@@ -63,6 +64,7 @@ new_case() { # new_case <name> -> sets CASE, adds stubs, changes into it
   unset FAKE_OPENCODE_EXIT FAKE_NPM_EXIT
   # The harness itself may export an event payload; every case sets what it needs.
   unset GITHUB_EVENT_PATH GITHUB_REPOSITORY GH_REPO PROMPT TRIAGE_PROMPT OPENCODE_MODELS GITHUB_WORKSPACE
+  unset GROQ_API_KEY OPENROUTER_API_KEY NVIDIA_API_KEY MISTRAL_API_KEY CEREBRAS_API_KEY
   export PATH="$CASE/bin:$PATH"
   cd "$CASE/work" || exit 1
 }
@@ -158,6 +160,42 @@ set -e
 check "retired model: next model is tried" [ "$(wc -l < "$FAKE_OPENCODE_CALLS")" -eq 2 ]
 check "retired model: job succeeds on the next model" [ "$status" -eq 0 ]
 check "retired model: the switch is reported" grep -q 'switching model' <<< "$out"
+
+# --- 4c. a provider secret holding the GitHub token is not tried ------------
+# The exact failure that motivated this: GROQ_API_KEY was set to the same
+# ghp_... value as GH_TOKEN.  A request with it gets 401, so the wrapper must
+# skip the keyed model and go straight to a usable one.
+new_case provider-github-token
+set +e
+out="$(GROQ_API_KEY="ghp_example" TRIAGE_PROMPT="Triage." GH_REPO="mdmuntakim/opencode" \
+      OPENCODE_MODELS="groq/openai/gpt-oss-120b test/model" timeout 60 "$SCRIPT" 2>&1)"
+status=$?
+set -e
+check "github token: job succeeds on the next model" [ "$status" -eq 0 ]
+check "github token: only the usable model ran" [ "$(wc -l < "$FAKE_OPENCODE_CALLS")" -eq 1 ]
+check "github token: model is reported as skipped" grep -q 'GitHub token, not a groq API key' <<< "$out"
+check "github token: no 401 attempt was made" no_match 'groq/openai/gpt-oss-120b' "$FAKE_OPENCODE_ARGS"
+
+# --- 4d. a missing provider key skips the model, not the job ----------------
+new_case provider-missing-key
+set +e
+out="$(TRIAGE_PROMPT="Triage." GH_REPO="mdmuntakim/opencode" \
+      OPENCODE_MODELS="openrouter/openai/gpt-oss-120b test/model" timeout 60 "$SCRIPT" 2>&1)"
+status=$?
+set -e
+check "missing key: job succeeds on the next model" [ "$status" -eq 0 ]
+check "missing key: only the usable model ran" [ "$(wc -l < "$FAKE_OPENCODE_CALLS")" -eq 1 ]
+check "missing key: the skip is explained" grep -q 'OPENROUTER_API_KEY is not set' <<< "$out"
+
+# --- 4e. a real-looking provider key is used -------------------------------
+new_case provider-valid-key
+set +e
+GROQ_API_KEY="gsk_example" TRIAGE_PROMPT="Triage." GH_REPO="mdmuntakim/opencode" \
+      OPENCODE_MODELS="groq/openai/gpt-oss-120b" timeout 60 "$SCRIPT" >/dev/null 2>&1
+status=$?
+set -e
+check "valid key: job succeeds" [ "$status" -eq 0 ]
+check "valid key: the keyed model is tried" grep -q 'groq/openai/gpt-oss-120b' "$FAKE_OPENCODE_ARGS"
 
 # --- 5. a manifest without a test script never starts npm -------------------
 # `npm test --if-present` exits 0 for this file, but starting npm is still

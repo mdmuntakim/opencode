@@ -179,20 +179,22 @@ Two limits are worth knowing:
 
 ## Setup details
 
-- **Model** – the runner uses free models only, in this fallback chain:
-  `opencode/glm-5.3-flash-free opencode/deepseek-v4.1-flash-free
+- **Model** – the default fallback chain starts with the keyed high-capacity
+  models and falls back to the free ones:
+  `groq/openai/gpt-oss-120b openrouter/openai/gpt-oss-120b
+  opencode/glm-5.3-flash-free opencode/deepseek-v4.1-flash-free
   opencode/flint-40b-free opencode/beam-free
-  opencode/mimo-v2.6-flash-free`.  The first entry is used for the session and
-  the rest back it up when a model stalls, times out or hits a free tier limit,
-  so the job keeps running on free capacity as long as one entry holds. No
-  provider API key is required. To use a keyed model, add an `OPENCODE_API_KEY`
-  secret and set the repository variable `OPENCODE_MODELS` to a chain that
-  lists the keyed models first, for example
-  `opencode-go/glm-5.3-flash opencode-go/kimi-k2.7-code`. Free models are rotated
-  by the provider, so if a run fails with `Model not found` or
-  `Free usage limit reached`, pick a working model and update the
-  `OPENCODE_MODELS` variable. Google/Gemini is not used, even when a
-  `GOOGLE_API_KEY` or `GEMINI_API_KEY` secret exists.
+  opencode/mimo-v2.6-flash-free`.  The first usable entry is used for the
+  session and the rest back it up when a model stalls, times out or hits a
+  provider limit. OpenCode reads `GROQ_API_KEY` and `OPENROUTER_API_KEY`
+  directly from the environment, so no `OPENCODE_AUTH_JSON` is needed for
+  these providers. A keyed model whose key is missing, or whose secret turns
+  out to hold a GitHub token (`ghp_…`, `github_pat_…`) instead of a provider
+  key, is skipped with a warning before the run rather than wasting an attempt
+  on the resulting 401. Free models are rotated by the provider, so if a run
+  fails with `Model not found` or `Free usage limit reached`, pick a working
+  model and update the `OPENCODE_MODELS` variable. Google/Gemini is not used,
+  even when a `GOOGLE_API_KEY` or `GEMINI_API_KEY` secret exists.
 - **Permissions** – a headless runner has nobody to approve a prompt.
   `external_directory` and `doom_loop` default to `"ask"`, so the agent used
   to wait forever and the job was cancelled at GitHub's 6 hour limit. The
@@ -235,11 +237,15 @@ in order of cost:
    [NVIDIA](https://build.nvidia.com) (`NVIDIA_API_KEY`),
    [Mistral](https://console.mistral.ai/) (`MISTRAL_API_KEY`) or
    [Cerebras](https://inference.cerebras.ai/) (`CEREBRAS_API_KEY`), then run
-   `gh secret set <NAME> --repo mdmuntakim/opencode` for each. Set the repo
-   variable `OPENCODE_MODELS` to a space separated fallback chain that lists
-   those providers first, and the runner will use the free opencode models
-   only as a last resort. Free tiers still rate limit, so this raises the
-   ceiling; it does not remove it.
+   `gh secret set <NAME> --repo mdmuntakim/opencode` for each. The value must
+   be the provider's own key, not a GitHub token copied into the wrong secret:
+   a `ghp_…` value is rejected by Groq with `401 Invalid API Key` and by
+   OpenRouter with `401 Missing Authentication header`. The wrapper detects
+   that shape and skips the keyed model with a warning instead of burning an
+   attempt on it. Set the repo variable `OPENCODE_MODELS` to a space separated
+   fallback chain that lists those providers first, and the runner will use the
+   free opencode models only as a last resort. Free tiers still rate limit, so
+   this raises the ceiling; it does not remove it.
 3. **Subscribe to OpenCode Go** ($10/month) or **Go Plus** — see
    [opencode.ai/v2/docs/console/go](https://opencode.ai/v2/docs/console/go/).
    Copy the key from the OpenCode Console and run

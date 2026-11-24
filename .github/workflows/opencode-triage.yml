@@ -90,7 +90,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$HOME/.config/opencode"
-          chain="${OPENCODE_MODELS:-opencode/glm-5.3-flash-free opencode/deepseek-v4.1-flash-free opencode/flint-40b-free opencode/beam-free opencode/mimo-v2.6-flash-free}"
+          chain="${OPENCODE_MODELS:-groq/openai/gpt-oss-120b openrouter/openai/gpt-oss-120b opencode/glm-5.3-flash-free opencode/deepseek-v4.1-flash-free opencode/flint-40b-free opencode/beam-free opencode/mimo-v2.6-flash-free}"
           first="${chain%% *}"
           cat > "$HOME/.config/opencode/opencode.jsonc" <<EOF
           {
@@ -129,8 +129,9 @@ jobs:
           PROMPT: ${{ github.event.inputs.prompt || env.TRIAGE_PROMPT }}
           OPENCODE_GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.OPENCODE_GITHUB_TOKEN }}
           OPENCODE_ADMIN_TOKEN: ${{ secrets.OPENCODE_ADMIN_TOKEN }}
-          # Optional free-tier provider keys. OpenCode picks up whichever of
-          # these are set; leave them unset to stay on opencode's free models.
+          # Optional free-tier provider keys. OpenCode reads these directly from
+          # the environment; leave them unset to stay on opencode's free models.
+          # The value must be the provider's key, not a GitHub token.
           # Google/Gemini is deliberately not wired in: the runner is free
           # models only.
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -142,6 +143,10 @@ jobs:
           OPENCODE_MODELS: ${{ vars.OPENCODE_MODELS }}
           OPENCODE_STALL_TIMEOUT: "900"
           OPENCODE_ATTEMPT_TIMEOUT: "2700"
+        # The wrapper tries the keyed high-capacity models first (Groq and
+        # OpenRouter GPT-OSS 120B) and then the free models. A keyed model
+        # whose secret is missing or is a GitHub token is skipped with a
+        # warning instead of a 401 attempt.
         run: .github/scripts/run-opencode-fallback.sh
 
       - name: Save the agent checkpoint
