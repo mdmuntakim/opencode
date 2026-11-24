@@ -16,6 +16,8 @@
 #   PROMPT                    explicit prompt, wins over TRIAGE_PROMPT
 #   TRIAGE_PROMPT             default prompt, usually prompts/triage.md
 #   OPENCODE_MODELS           space separated fallback chain
+#   GROQ_API_KEY              key for groq/<model> entries in the chain
+#   OPENROUTER_API_KEY        key for openrouter/<model> entries
 #   OPENCODE_ATTEMPT_TIMEOUT  seconds a single run may take (default 2700)
 #   OPENCODE_STALL_TIMEOUT    seconds without log output before a run is stuck
 #                             (default 900: a long compile is silent, not stuck)
@@ -23,7 +25,7 @@
 # ============================================================================
 set -uo pipefail
 
-read -r -a models <<< "${OPENCODE_MODELS:-opencode/glm-5.3-flash-free opencode/deepseek-v4.1-flash-free opencode/flint-40b-free opencode/beam-free opencode/mimo-v2.6-flash-free}"
+read -r -a models <<< "${OPENCODE_MODELS:-groq/openai/gpt-oss-120b openrouter/openai/gpt-oss-120b opencode/glm-5.3-flash-free opencode/deepseek-v4.1-flash-free opencode/flint-40b-free opencode/beam-free opencode/mimo-v2.6-flash-free}"
 attempt_seconds="${OPENCODE_ATTEMPT_TIMEOUT:-2700}"
 stall_seconds="${OPENCODE_STALL_TIMEOUT:-900}"
 max_retries="${OPENCODE_TEST_RETRIES:-3}"
@@ -107,6 +109,41 @@ has_test_suite() {
   else
     grep -qE '"test"[[:space:]]*:' "$manifest"
   fi
+}
+
+# Provider credentials.  OpenCode reads these environment variables directly,
+# so a keyed model in OPENCODE_MODELS only works when the matching secret is a
+# real key for that provider.  A repository secret that holds the GitHub token
+# (ghp_, github_pat_, ...) is not a provider key: the request comes back 401 and
+# the attempt is wasted.  Detect that before the run and skip the model with a
+# clear warning instead of burning the fallback chain on it.
+provider_env_for() {
+  case "$1" in
+    groq) echo GROQ_API_KEY ;;
+    openrouter) echo OPENROUTER_API_KEY ;;
+    nvidia) echo NVIDIA_API_KEY ;;
+    mistral) echo MISTRAL_API_KEY ;;
+    cerebras) echo CEREBRAS_API_KEY ;;
+    *) return 1 ;;
+  esac
+}
+
+provider_key_problem() {
+  local model="$1" provider env_name key
+  provider="${model%%/*}"
+  env_name="$(provider_env_for "$provider")" || return 1
+  key="${!env_name:-}"
+  if [ -z "$key" ]; then
+    echo "${env_name} is not set"
+    return 0
+  fi
+  case "$key" in
+    ghp_*|gho_*|ghu_*|ghs_*|github_pat_*)
+      echo "${env_name} contains a GitHub token, not a ${provider} API key"
+      return 0
+      ;;
+  esac
+  return 1
 }
 
 # Terminate the agent and give it a moment to flush its output before it is
@@ -211,6 +248,13 @@ run_attempt() {
 }
 
 for model in "${models[@]}"; do
+  # Skip a keyed model whose provider credential is absent or is only the
+  # GitHub token copied into the wrong secret.
+  if reason="$(provider_key_problem "$model")"; then
+    echo "::warning::Skipping ${model}: ${reason}. Add a real ${model%%/*} API key to the repository secrets."
+    continue
+  fi
+
   log="$(mktemp)"
   run_attempt "$model" "$log"
   status=$?
