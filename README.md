@@ -279,7 +279,6 @@ so a rejected key shows up in the job log as a warning instead of being hidden
 behind a silent fallback to the free models. A secret that contains a GitHub
 token is reported and never sent to the provider.
 
-
 ### Logging the runner in instead of staying anonymous
 
 GitHub-hosted runners share egress IPs, and anonymous free inference is
